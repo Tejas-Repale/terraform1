@@ -1,0 +1,42 @@
+name: RDS Infrastructure
+
+on:
+  workflow_dispatch:  # Manual trigger
+    inputs:
+      apply:
+        description: 'Apply changes? (yes/no)'  
+        required: true
+        default: 'no'
+
+jobs:
+  terraform:
+    name: RDS Plan and Apply
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+            aws-region: ap-south-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+            terraform_version: "1.7.5"
+
+      - name: Terraform Init
+        working-directory: terraform/database
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: terraform/database
+        run: terraform plan -var "db_password=${{ secrets.DB_PASSWORD }}"
+
+      - name: Terraform Apply
+        if: ${{ github.event.inputs.apply == 'yes' }}
+        working-directory: terraform/database
+        run: terraform apply -auto-approve -var "db_password=${{ secrets.DB_PASSWORD }}"
